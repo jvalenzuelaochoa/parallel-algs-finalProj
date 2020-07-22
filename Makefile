@@ -1,38 +1,22 @@
-OP_FILE?=output
-FILE?=output
-DEFAULT=inp
+FILE?=pre_sorted
+POINTS?=points
+HULL?=polygon
 SIZE?=1000
-MIN?=0
 
 input:
-	python create_input.py --output $(OP_FILE) --size $(SIZE)
+	python create_input.py --output $(POINTS) --size $(SIZE)
 
-all: hello
+all: test
 
-test:
-	./q1 "output.txt"
-	python verify_min.py --quiet --filename $(FILE).txt
-	python verify_units.py --quiet --filename $(FILE).txt
-	./q2 "output.txt"
-	python verify_range.py --quiet --filename $(FILE).txt --output q2a
-	python verify_range.py --quiet --filename $(FILE).txt --output q2b
-	python verify_range.py --quiet --filename $(FILE).txt --output q2c --lump
+test: presort plot
 
-hello:
-	nvcc cuda_hello.cu -o hello
-	./hello
+plot:
+	python plot.py --quiet --pointsfile $(POINTS).txt --polygonfile $(HULL).txt
 
-hw3: clean q1
-	python verify_min.py --quiet --filename $(DEFAULT).txt
-	python verify_units.py --quiet --filename $(DEFAULT).txt
+presort:
+	python pre_sort.py --quiet --pointsfile $(POINTS).txt --output $(FILE).txt
 
-q1:
-	nvcc q1.cu -o q1
-	./q1
-
-q2:
-	nvcc q2.cu -o q2
-	./q2
+seq: clean
 
 clean:
-	rm -f *.exe *.lib *.exp
+	rm -rf *.exe *.exp *.lib
