@@ -8,7 +8,7 @@ input:
 
 all: test
 
-test: presort plot
+test: presort seq plot
 
 plot:
 	python plot.py --quiet --pointsfile $(POINTS).txt --polygonfile $(HULL).txt
@@ -16,7 +16,11 @@ plot:
 presort:
 	python pre_sort.py --quiet --pointsfile $(POINTS).txt --output $(FILE).txt
 
-seq: clean
+seq:
+	./graham
+
+build: clean
+	nvcc graham.cu -o graham
 
 clean:
 	rm -rf *.exe *.exp *.lib

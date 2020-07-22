@@ -20,7 +20,7 @@ def parse_coordinates(file):
         str_arr[i] = str_arr[i].replace('(', '')
         coordinates = str_arr[i].split(',')
         if len(str_arr[i]) > 2:
-            num_list.append([coordinates[0], coordinates[1]])
+            num_list.append([float(coordinates[0]), float(coordinates[1])])
 
     return num_list
 
@@ -37,7 +37,7 @@ plt.plot(xs,ys)
 # Add all points to plot
 coord = parse_coordinates(args.pointsfile)
 for (x,y) in coord:
-    circle = circle = plt.Circle((x, y), radius=0.3, fc='y')
+    circle = circle = plt.Circle((x, y), radius=1, fc='y')
     plt.gca().add_patch(circle)
 
 # Display plot
