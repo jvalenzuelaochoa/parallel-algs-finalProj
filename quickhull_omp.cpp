@@ -105,27 +105,19 @@ double shortest_distance(Coordinate p1, Coordinate p2, Coordinate p)
   //printf("Perpendicular distance is %f\n", d); 
   return d; 
 }
-
-// function from https://www.geeksforgeeks.org/quickhull-algorithm-convex-hull/
-// End points of line L are p1 and p2.  side can have value 
-// 1 or -1 specifying each of the parts made by the line L 
-vector<Coordinate> subHull(vector<Coordinate> P, Coordinate p1, Coordinate p2) 
-{ 
-  int ind = -1; 
-  double max_dist = 0;
-  int numthreads = 2; 
-  int totalnumthreads, tid;
-    
+vector<Coordinate> left_of_P(vector<Coordinate>& P, Coordinate p1, Coordinate p2)
+{
   // array compaction to get Pprime
   int   i, n, chunk, d;
   n = P.size();
   chunk = 1;
+
   int c[n], p[n];
     
-#pragma omp parallel private(i) num_threads(n)
+#pragma omp parallel private(i) //num_threads(n)
   {
 
-#pragma omp for schedule(static,chunk)
+#pragma omp for schedule(dynamic)
     for(i=0;i<n;i++)
       {
 	if(findSide(p1, p2, P[i]) >0)
@@ -142,13 +134,13 @@ vector<Coordinate> subHull(vector<Coordinate> P, Coordinate p1, Coordinate p2)
   }
   for (i=0; i < n; i++)
     {
-      printf("C array= %d\n", c[i]);
+      // printf("C array= %d\n", c[i]);
     }
-  printf("n is= %d\n", n);
+  //printf("n is= %d\n", n);
   
-#pragma omp parallel private(i) num_threads(n)
+#pragma omp parallel private(i) //num_threads(n)
   {
-#pragma omp for schedule(static,1)
+#pragma omp for schedule(static, chunk)
       
     for(i=0;i<n;i++)
       {
@@ -161,9 +153,9 @@ vector<Coordinate> subHull(vector<Coordinate> P, Coordinate p1, Coordinate p2)
  
   for (d=1; d<n; d=2*d)
     {
-#pragma omp parallel private(i,val) num_threads(n)
+#pragma omp parallel private(i,val) //num_threads(n)
       {
-#pragma omp for schedule(static,chunk)
+#pragma omp for schedule(dynamic)
 	for(i=1;i<n;i++)
 	  {
 	    if(i>=d) val = p[i-d];
@@ -171,7 +163,7 @@ vector<Coordinate> subHull(vector<Coordinate> P, Coordinate p1, Coordinate p2)
 	  }
 
 #pragma omp barrier
-#pragma omp for schedule(static,chunk)
+#pragma omp for schedule(dynamic)
       
 	for(i=1;i<n;i++)
 	  {
@@ -185,7 +177,7 @@ vector<Coordinate> subHull(vector<Coordinate> P, Coordinate p1, Coordinate p2)
 
   for (i=0; i < n; i++)
     {
-      printf("Prefix sum of c= %d\n", p[i]);
+      //printf("Prefix sum of c= %d\n", p[i]);
     }
 
   int sum_c =0;//sum of p
@@ -196,13 +188,13 @@ vector<Coordinate> subHull(vector<Coordinate> P, Coordinate p1, Coordinate p2)
     sum_c = sum_c + c[i];
 
 
-  printf("sum_c = %d\n", sum_c);
+  //printf("sum_c = %d\n", sum_c);
   vector<Coordinate> Pprime(sum_c);
 
 
-#pragma omp parallel private(i) num_threads(n)
+#pragma omp parallel private(i) //num_threads(n)
   {
-#pragma omp for schedule(static,chunk)
+#pragma omp for schedule(dynamic)
 
     for (i=0; i < n; i++)
       {
@@ -213,10 +205,19 @@ vector<Coordinate> subHull(vector<Coordinate> P, Coordinate p1, Coordinate p2)
       }
   }
 
+  return Pprime;
+}
+// function from https://www.geeksforgeeks.org/quickhull-algorithm-convex-hull/
+// End points of line L are p1 and p2.  side can have value 
+// 1 or -1 specifying each of the parts made by the line L 
+vector<Coordinate> subHull(vector<Coordinate> P, Coordinate p1, Coordinate p2) 
+{ 
+  int ind = -1; 
+  double max_dist = 0;
+  int numthreads = 2; 
+  int totalnumthreads, tid;
 
-
-
-
+  vector<Coordinate> Pprime = left_of_P(P, p1, p2);
     
   if(Pprime.size() <2)
     {
@@ -295,9 +296,9 @@ vector<Coordinate> quickHull(vector<Coordinate> P)
   int xmin, xmax;
 
   //omp block begins
-#pragma omp parallel private(i) num_threads(n)
+#pragma omp parallel private(i) //num_threads(n)
   {
-#pragma omp for schedule(static,chunk)
+#pragma omp for schedule(dynamic)
       
     for(i=0;i<n;i++)
       {
