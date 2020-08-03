@@ -8,7 +8,7 @@ CPP_SOURCES = Coordinate.cpp
 all: test
 
 input:
-	python create_input.py --output $(POINTS) --size $(SIZE)
+	python create_input.py --output $(POINTS) --size $(SIZE) --grid 500000
 
 test: presort seq plot
 
@@ -31,6 +31,12 @@ testquickhull: build presort quickhull aftersort
 	cp sortedpolygon.txt polygon.txt
 	make plot
 
+quickhullnew: input presort
+	./quickhull_cu
+	make aftersort
+	cp sortedpolygon.txt polygon.txt
+	make plot
+
 quickhullnew: input testquickhull
 
 mergehull:
@@ -40,6 +46,7 @@ testmergehull: build presort mergehull plot
 
 build: clean
 	nvcc graham.cu $(CPP_SOURCES) -o graham
+	nvcc quickhull.cu -o quickhull_cu
 	g++ quickhull_omp.cpp $(CPP_SOURCES) -fopenmp -o quickhull
 	g++ mergehull_omp.cpp $(CPP_SOURCES) -fopenmp -o mergehull
 
