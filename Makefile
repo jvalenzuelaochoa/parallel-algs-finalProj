@@ -2,7 +2,7 @@ FILE?=pre_sorted
 POINTS?=points
 HULL?=polygon
 SORTEDHULL?=sortedpolygon
-SIZE?=100
+SIZE?=1000000
 
 input:
 	python create_input.py --output $(POINTS) --size $(SIZE)

@@ -106,6 +106,8 @@ int main(int argc, char **argv)
 
     const int ARRAY_SIZE = static_cast<int>(v.size());
 
+    clock_t start, end;
+    start = clock(); 
 
     vector<Coordinate> graham_stack;
     graham_stack.push_back(v[0]);
@@ -132,6 +134,12 @@ int main(int argc, char **argv)
     {
         graham_stack.push_back(p);
     }
+
+    end = clock();
+    // Calculating total time taken by the program. 
+    double time_taken = double(end - start) / double(CLOCKS_PER_SEC); 
+    printf( "Time taken by program is :%f\n", time_taken); 
+
 
     ofstream myfile;
     myfile.open("polygon.txt", ofstream::trunc);

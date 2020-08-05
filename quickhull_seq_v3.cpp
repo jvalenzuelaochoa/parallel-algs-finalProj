@@ -102,10 +102,8 @@ double shortest_distance(Coordinate p1, Coordinate p2, Coordinate p)
 vector<Coordinate> subHull(vector<Coordinate> P, Coordinate p1, Coordinate p2) 
 { 
     int ind = -1; 
-    double max_dist = 0;
-    int numthreads = 2; 
-    int totalnumthreads, tid;
-    
+    double max_dist = 0; 
+
     vector<Coordinate> Pprime;
 
     for (int i=0; i< P.size() ; i++) 
@@ -131,31 +129,9 @@ vector<Coordinate> subHull(vector<Coordinate> P, Coordinate p1, Coordinate p2)
 		max_dist = temp;
 	      } 
 	  }
-	vector<Coordinate> Hl;
-	vector<Coordinate> Hr;
-	
-	// #pragma omp parallel private(tid)
-#pragma omp parallel num_threads(2)
-
-	{
-	  // Recur for the two parts divided by a[ind]
-	  /* Obtain and print thread id */
-	  //tid = omp_get_thread_num();
-	  //printf("Hello World from thread = %d\n", tid);
-
-
-	  Hl = subHull(Pprime, p1, Pprime[ind]);
-	  Hr = subHull(Pprime, Pprime[ind], p2);
-
-	  /* Only master thread does this */
-	  /*if (tid == 0)
-	    {
-	      totalnumthreads = omp_get_num_threads();
-	      printf("Number of threads = %d\n", totalnumthreads);
-	    }
-	  */
-
-	}
+	// Recur for the two parts divided by a[ind]
+	vector<Coordinate> Hl = subHull(Pprime, p1, Pprime[ind]);
+	vector<Coordinate> Hr = subHull(Pprime, Pprime[ind], p2);
 	//ref: https://stackoverflow.com/questions/201718/concatenating-two-stdvectors
 	for (int i=0; i< Hr.size() ; i++) 
 	  {
@@ -183,7 +159,7 @@ vector<Coordinate> quickHull(vector<Coordinate> P)
         if (P[i].x > P[max_x].x) 
             max_x = i; 
     } 
-    //cout << "The min_x is: " <<min_x<<", the max_x is "<<max_x << endl;
+    cout << "The min_x is: " <<min_x<<", the max_x is "<<max_x << endl;
 
     
     // Recur for the two parts divided by a[ind]
