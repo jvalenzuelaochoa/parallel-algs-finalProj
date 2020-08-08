@@ -55,7 +55,21 @@ for point in points:
 points.sort(key=lambda p: p.angle, reverse=False)
 
 # store points in file
-o_file_str = args.output
+o_file_str = args.output + '.txt'
+o_file = open(o_file_str, 'w')
+
+num_list =[]
+for point in points:
+    num_list.append((point.x, point.y))
+
+o_file.write(' '.join(map(str, num_list)))
+o_file.close
+
+# resort elements by their angle to the reference
+points.sort(key=lambda p: p.x, reverse=False)
+
+# store points in file
+o_file_str = args.output + '_x.txt'
 o_file = open(o_file_str, 'w')
 
 num_list =[]

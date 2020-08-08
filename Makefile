@@ -1,48 +1,54 @@
-FILE?=pre_sorted
+FILE?=sort_pointsed
 POINTS?=points
 HULL?=polygon
 SORTEDHULL?=sortedpolygon
-SIZE?=1000
+SIZE?=10
+CPP_SOURCES = Coordinate.cpp
+
+all: test
 
 input:
 	python create_input.py --output $(POINTS) --size $(SIZE)
-
-all: test
 
 test: presort seq plot
 
 plot:
 	python plot.py --quiet --pointsfile $(POINTS).txt --polygonfile $(HULL).txt
 
-plotsorted:
-	python plot.py --quiet --pointsfile $(POINTS).txt --polygonfile $(SORTEDHULL).txt
-
 presort:
-	python pre_sort.py --quiet --pointsfile $(POINTS).txt --output $(FILE).txt
+	python sort_points.py --quiet --pointsfile $(POINTS).txt --output $(FILE)
 
 aftersort:
-	python pre_sort.py --quiet --pointsfile $(HULL).txt --output $(SORTEDHULL).txt
+	python sort_points.py --quiet --pointsfile $(HULL).txt --output $(SORTEDHULL)
 
 seq:
 	./graham
 
-testquickhull: 
-	g++ quickhull_omp.cpp -fopenmp
-	./a.out
-	make aftersort
-	make plotsorted
+quickhull:
+	./quickhull "sort_pointsed.txt" debug
 
-quickhullnew: 
-	make input
-	make presort
-	g++ quickhull_omp.cpp -fopenmp
-	./a.out
-	make aftersort
-	make plotsorted
+testquickhull: build input presort quickhull aftersort
+	cp sortedpolygon.txt polygon.txt
+	make plot
 
+quickhullnew: input testquickhull
+
+mergehull:
+	./mergehull "sort_pointsed_x.txt" debug
+
+testmergehull: build input presort mergehull aftersort
+	cp sortedpolygon.txt polygon.txt
+	make plot
 
 build: clean
-	nvcc graham.cu -o graham
+	nvcc graham.cu $(CPP_SOURCES) -o graham
+	g++ quickhull_omp.cpp $(CPP_SOURCES) -fopenmp -o quickhull
+	g++ mergehull_omp.cpp $(CPP_SOURCES) -fopenmp -o mergehull
+
+run: build input presort seq plot
 
 clean:
 	rm -rf *.exe *.exp *.lib
+
+cleanall: clean
+	rm -rf *.txt

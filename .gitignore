@@ -3,6 +3,7 @@
 *.lib
 *.pdf
 *.out
+*.txt
 graham
 *~
 archive/
