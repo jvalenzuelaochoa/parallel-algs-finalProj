@@ -1,4 +1,4 @@
-FILE?=sort_pointsed
+FILE?=pre_sorted
 POINTS?=points
 HULL?=polygon
 SORTEDHULL?=sortedpolygon
@@ -25,20 +25,18 @@ seq:
 	./graham
 
 quickhull:
-	./quickhull "sort_pointsed.txt" debug
+	./quickhull "pre_sorted.txt" debug
 
-testquickhull: build input presort quickhull aftersort
+testquickhull: build presort quickhull aftersort
 	cp sortedpolygon.txt polygon.txt
 	make plot
 
 quickhullnew: input testquickhull
 
 mergehull:
-	./mergehull "sort_pointsed_x.txt" debug
+	./mergehull "pre_sorted_x.txt" debug
 
-testmergehull: build input presort mergehull aftersort
-	cp sortedpolygon.txt polygon.txt
-	make plot
+testmergehull: build presort mergehull plot
 
 build: clean
 	nvcc graham.cu $(CPP_SOURCES) -o graham
