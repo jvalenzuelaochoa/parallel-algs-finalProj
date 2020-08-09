@@ -2,7 +2,8 @@ FILE?=pre_sorted
 POINTS?=points
 HULL?=polygon
 SORTEDHULL?=sortedpolygon
-SIZE?=1000000
+QHULL?=qhull
+SIZE?=10
 
 input:
 	python create_input.py --output $(POINTS) --size $(SIZE)
@@ -17,11 +18,14 @@ plot:
 plotsorted:
 	python plot.py --quiet --pointsfile $(POINTS).txt --polygonfile $(SORTEDHULL).txt
 
+qhullplot:
+	python plot.py --quiet --pointsfile $(POINTS).txt --polygonfile $(QHULL).txt
+
 presort:
 	python pre_sort.py --quiet --pointsfile $(POINTS).txt --output $(FILE).txt
 
 aftersort:
-	python pre_sort.py --quiet --pointsfile $(HULL).txt --output $(SORTEDHULL).txt
+	python pre_sort.py --quiet --pointsfile $(QHULL).txt --output $(SORTEDHULL).txt
 
 seq:
 	./graham
@@ -35,7 +39,7 @@ testquickhull:
 quickhullnew: 
 	make input
 	make presort
-	g++ quickhull_omp.cpp -fopenmp
+	nvcc quickhull.cu
 	./a.out
 	make aftersort
 	make plotsorted
