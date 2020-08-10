@@ -18,6 +18,8 @@ vector<Coordinate> joinHulls(vector<Coordinate> Hl, vector<Coordinate> Hr)
   // n2 -> number of points in polygon b
   int n1 = Hl.size(), n2 = Hr.size();
 
+  if (debug && (n1 == 0 || n2 == 0))
+    printf("Empty array!!!");
   int ia = 0, ib = 0;
   for (int i = 1; i < n1; i++)
     if (Hl[i].x > Hl[ia].x)
@@ -78,14 +80,6 @@ vector<Coordinate> joinHulls(vector<Coordinate> Hl, vector<Coordinate> Hr)
   int lowera = inda, lowerb = indb;
   vector<Coordinate> ret;
 
-  if (debug)
-  {
-    cout << "Hl : ";
-    displayCoordinateVec(Hl);
-    cout << "Hr : ";
-    displayCoordinateVec(Hr);
-  }
-
   //ret contains the convex hull after merging the two convex hulls
   //with the points sorted in anti-clockwise order
   int ind = uppera;
@@ -108,24 +102,42 @@ vector<Coordinate> joinHulls(vector<Coordinate> Hl, vector<Coordinate> Hr)
 
 vector<Coordinate> mergeHull(vector<Coordinate> P)
 {
-  if (debug)
-    displayCoordinateVec(P);
+  // if (debug)
+  //   displayCoordinateVec(P);
   if (P.size() < 3)
     return P;
 
   vector<Coordinate> Hl;
   vector<Coordinate> Hr;
   // https://pages.tacc.utexas.edu/~eijkhout/pcse/html/omp-parallel.html
-  // #pragma omp parallel num_threads(2)
-  //   {
-  //     int num = omp_get_thread_num();
-  //     if (num == 0)
-  // https://stackoverflow.com/questions/50549611/slicing-a-vector-in-c`
-  Hl = mergeHull(vector<Coordinate>(P.begin(), P.begin() + P.size() / 2));
-  // if (num == 1)
-  Hr = mergeHull(vector<Coordinate>(P.begin() + P.size() / 2, P.end()));
-  // }
+  int i;
 
+#pragma omp omp_set_nested(1)
+  {
+#pragma omp parallel private(i) num_threads(2)
+    {
+#pragma omp for schedule(static, 1)
+      for (i = 0; i < 2; i++)
+      {
+        if (i == 0)
+          // https://stackoverflow.com/questions/50549611/slicing-a-vector-in-c`
+          Hl = mergeHull(vector<Coordinate>(P.begin(), P.begin() + P.size() / 2));
+        if (i == 1)
+          Hr = mergeHull(vector<Coordinate>(P.begin() + P.size() / 2, P.end()));
+        printf("thread %d\n", i);
+      }
+    }
+  }
+
+#pragma omp barrier
+
+  // if (debug)
+  // {
+  //   cout << "Hl : ";
+  //   displayCoordinateVec(Hl);
+  //   cout << "Hr : ";
+  //   displayCoordinateVec(Hr);
+  // }
   return joinHulls(Hl, Hr);
 }
 
