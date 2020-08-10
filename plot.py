@@ -38,8 +38,13 @@ plt.plot(xs,ys)
 
 # Add all points to plot
 coord = parse_coordinates(args.pointsfile)
+
+grid_maxx = max(coord, key = lambda x: x[0])[0]
+
+grid_maxy = max(coord, key = lambda x: x[1])[1]
+
 for (x,y) in coord:
-    circle = circle = plt.Circle((x, y), radius=1, fc='y')
+    circle = circle = plt.Circle((x, y), radius=max([grid_maxx, grid_maxy])/80, fc='y')
     plt.gca().add_patch(circle)
 
 # Display plot
