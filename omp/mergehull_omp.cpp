@@ -5,8 +5,9 @@
 #include <vector>
 #include <set>
 #include <fstream>
-#include "Coordinate.hpp"
-#include "common.cpp"
+#include "../common/Coordinate.hpp"
+#include "../common/common.cpp"
+#include <time.h>
 using namespace std;
 
 bool debug = false;
@@ -50,7 +51,6 @@ vector<Coordinate> joinHulls(vector<Coordinate> Hl, vector<Coordinate> Hr)
         done = 0;
       }
     }
-    cout << 1 << endl;
   }
 
   int uppera = inda, upperb = indb;
@@ -74,7 +74,6 @@ vector<Coordinate> joinHulls(vector<Coordinate> Hl, vector<Coordinate> Hr)
         done = 0;
       }
     }
-    cout << 2 << endl;
   }
 
   int lowera = inda, lowerb = indb;
@@ -124,20 +123,19 @@ vector<Coordinate> mergeHull(vector<Coordinate> P)
           Hl = mergeHull(vector<Coordinate>(P.begin(), P.begin() + P.size() / 2));
         if (i == 1)
           Hr = mergeHull(vector<Coordinate>(P.begin() + P.size() / 2, P.end()));
-        printf("thread %d\n", i);
       }
     }
   }
 
 #pragma omp barrier
 
-  // if (debug)
-  // {
-  //   cout << "Hl : ";
-  //   displayCoordinateVec(Hl);
-  //   cout << "Hr : ";
-  //   displayCoordinateVec(Hr);
-  // }
+  if (debug)
+  {
+    cout << "Hl : ";
+    displayCoordinateVec(Hl);
+    cout << "Hr : ";
+    displayCoordinateVec(Hr);
+  }
   return joinHulls(Hl, Hr);
 }
 
@@ -164,9 +162,15 @@ int main(int argc, char **argv)
   inp.close();
 
   const int ARRAY_SIZE = static_cast<int>(v.size());
+  clock_t start, end;
+  start = clock();
 
   vector<Coordinate> hull = mergeHull(v);
-  cout << "posthull" << endl;
+
+  end = clock();
+  // Calculating total time taken by the program.
+  double time_taken = double(end - start) / double(CLOCKS_PER_SEC);
+  printf("Time taken by program is :%f\n", time_taken);
 
   printf("Number of elements in hull: %ld\n", hull.size());
 

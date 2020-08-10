@@ -5,8 +5,9 @@
 #include <vector>
 #include <set>
 #include <fstream>
-#include "Coordinate.hpp"
-#include "common.cpp"
+#include "../common/Coordinate.hpp"
+#include "../common/common.cpp"
+#include <time.h>
 using namespace std;
 
 bool debug = false;
@@ -346,9 +347,15 @@ int main(int argc, char **argv)
 
   const int ARRAY_SIZE = static_cast<int>(v.size());
 
-  vector<Coordinate> hull;
+  clock_t start, end;
+  start = clock();
 
-  hull = quickHull(v);
+  vector<Coordinate> hull = quickHull(v);
+
+  end = clock();
+  // Calculating total time taken by the program.
+  double time_taken = double(end - start) / double(CLOCKS_PER_SEC);
+  printf("Time taken by program is :%f\n", time_taken);
 
   printf("Number of elements in hull: %ld\n", hull.size());
 

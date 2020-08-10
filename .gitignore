@@ -8,3 +8,5 @@ graham
 *~
 archive/
 *myGPU*
+z_archive/
+thrust_test/

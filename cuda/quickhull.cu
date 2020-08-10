@@ -1,8 +1,9 @@
+#define TOP_LEVEL
 #include <iostream>
 #include <omp.h>
-#include<cmath>
+#include <cmath>
 #include <vector>
-#include<set>
+#include <set>
 #include <fstream>
 
 #include <thrust/transform_reduce.h>
@@ -23,10 +24,11 @@
 #include <thrust/reverse.h>
 #include <thrust/pair.h>
 
+#include "../common/Coordinate.hpp"
+#include "../common/common.cpp"
+
 using namespace std;
 #define BLOCK_SIZE 1024
-
-
 
 // Make predicate easy to write
 typedef thrust::tuple<float, float, int> FloatTuple3;
@@ -52,7 +54,7 @@ struct is_interior_6_tuple {
 //reference: https://stackoverflow.com/questions/38923671/thrust-cuda-find-maximum-per-each-groupsegment
 struct my_max_func
 {
-  
+
   template <typename T1, typename T2>
   __host__ __device__
   T1 operator()(const T1 t1, const T2 t2){
@@ -86,8 +88,8 @@ bool cmpf(float A, float B, float epsilon = 0.0001f)
 // See: Algorithm 1 on Area of Triangles
 __host__ __device__
 int isLeft(float& p0x, float& p0y, float& p1x, float& p1y, float& p2x, float& p2y) {
-  ///      float val = (p.y - p1.y) * (p2.x - p1.x) - 
-  //      (p2.y - p1.y) * (p.x - p1.x); 
+  ///      float val = (p.y - p1.y) * (p2.x - p1.x) -
+  //      (p2.y - p1.y) * (p.x - p1.x);
   bool e1, e2;
 
   e1 = cmpf(p2x, p1x) && cmpf(p2y,p1y);
@@ -97,7 +99,7 @@ int isLeft(float& p0x, float& p0y, float& p1x, float& p1y, float& p2x, float& p2
   if(e1 || e2 )
     return 1;
   else
-    {  
+    {
       float val =  (p1x - p0x) * (p2y - p0y) - (p2x - p0x) * (p1y - p0y);
       if (val >=0) return 1;
     }
@@ -117,7 +119,7 @@ __host__ __device__
 int PointInTriangle (float& ptx, float& pty, float& v1x,float& v1y, float& v2x,float& v2y, float& v3x, float& v3y)
 {
   float d1, d2, d3;
-    
+
   bool has_neg, has_pos;
   bool e1, e2, e3;
 
@@ -157,16 +159,16 @@ float shortest_distance(float &P0_x,float &P0_y,float &P1_x,float &P1_y, float &
 
   x1 = P2_x;
   y1 = P2_y;
-  
+
   a = P0_y-P1_y;
   b = P1_x-P0_x;
   c = (P0_x-P1_x)*P0_y + (P1_y-P0_y)*P0_x;
 
-    
-  float d = fabs((a * x1 + b * y1 + c)) /  
-    (sqrt(a * a + b * b)); 
-  //printf("Perpendicular distance is %f\n", d); 
-  return d; 
+
+  float d = fabs((a * x1 + b * y1 + c)) /
+    (sqrt(a * a + b * b));
+  //printf("Perpendicular distance is %f\n", d);
+  return d;
 }
 // Preprocess by discarding interior points, i.e., 1st round of discarding
 __global__
@@ -177,7 +179,7 @@ void kernelCalcDist(int *first_pts, int *last_pts, int *keys, float *v_x, float 
   if (i < n ) // Check
     {
       //get first and last point
-      
+
       dist[i] = shortest_distance(v_x[first_pts[i]],v_y[first_pts[i]],v_x[last_pts[keys[i]]],v_y[last_pts[keys[i]]], v_x[i], v_y[i]);
     }
 }
@@ -186,7 +188,7 @@ void kernelCalcDist(int *first_pts, int *last_pts, int *keys, float *v_x, float 
 __global__
 void kernelIsLeft(float *h_extreme_x, float *h_extreme_y,
 		  float *v_x, float *v_y, int *flag, int n) {
-  
+
   __shared__ float2 s_extreme[2]; // Stored in shared memory
 
   if (threadIdx.x == 0) {
@@ -196,8 +198,8 @@ void kernelIsLeft(float *h_extreme_x, float *h_extreme_y,
     }
   }
   __syncthreads();
-  
-  
+
+
   int i = threadIdx.x + blockDim.x * blockIdx.x;
   if (i < n) // Check
     {
@@ -238,7 +240,7 @@ void kernelLabelInterior(int *first_pts, int *last_pts, int *d_idxs_out, int *ke
   if (i < n ) // Check
     {
       //if interior flag = 0 otherwise flag =1
-      //float& ptx, float& pty, float& v1x,float& v1y, float& v2x,float& v2y, float& v3x, float& v3y)      
+      //float& ptx, float& pty, float& v1x,float& v1y, float& v2x,float& v2y, float& v3x, float& v3y)
       if(PointInTriangle (v_x[i], v_y[i],v_x[first_pts[i]],v_y[first_pts[i]],
 			  v_x[d_idxs_out[keys[i]]],v_y[d_idxs_out[keys[i]]],
 			  v_x[last_pts[keys[i]]],v_y[last_pts[keys[i]]]) == 1)
@@ -247,49 +249,9 @@ void kernelLabelInterior(int *first_pts, int *last_pts, int *d_idxs_out, int *ke
 	flag[i] = 1;
 
     }
-  
-  
+
+
 }
-
-
-class Coordinate {
-public:
-  float x;
-  float y;
-
-  Coordinate()
-  {
-    x = 0;
-    y = 0;
-  }
-
-  Coordinate(float x1, float y1)
-  {
-    x = x1;
-    y = y1;
-  }
-
-  Coordinate(const Coordinate &c)
-  {
-    x = c.x;
-    y = c.y;
-  }
-  
-  //https://stackoverflow.com/questions/19871647/how-do-i-insert-objects-into-stl-set
-  //https://stackoverflow.com/questions/34047772/stdset-custom-comparator-for-2d-points
-  bool operator< (const Coordinate &right) const
-  {
-    //    return x > right.x;
-    if (x < right.x) return true;
-    if (x > right.x) return false;
-    if (y < right.y) return true;
-    return false;
-  }
-
-};
-
-
-
 
 int main(int argc, char **argv)
 {
@@ -355,37 +317,37 @@ int main(int argc, char **argv)
 
   printf("Number of elements in file: %d\n", static_cast<int>(v.size()));
 
-  
+
   const int constn = static_cast<int>(v.size());
   int n = v.size();
   thrust::host_vector<float> hx(n);
   thrust::host_vector<float> hy(n);
-    
-  for (int i=0; i< n; i++) 
+
+  for (int i=0; i< n; i++)
     {
       hx[i] = v[i].x;
       hy[i] = v[i].y;
-     
+
     }
 
   thrust::device_vector<float> dx = hx;
   thrust::device_vector<float> dy = hy;
 
-    
+
   thrust::device_vector<float> dist(n);
   thrust::device_vector<int> head(n);
   thrust::device_vector<int> keys(n);
   thrust::device_vector<int> first_pts(n);
   thrust::device_vector<int> flag(n);
 
-     
-  int min_x = 0, max_x = 0; 
-  for (int i=1; i< n; i++) 
-    { 
-      if (hx[i] < hx[min_x]) 
-	min_x = i; 
-      if (hx[i] > hx[max_x]) 
-	max_x = i; 
+
+  int min_x = 0, max_x = 0;
+  for (int i=1; i< n; i++)
+    {
+      if (hx[i] < hx[min_x])
+	min_x = i;
+      if (hx[i] > hx[max_x])
+	max_x = i;
     }
 
   if(debug)
@@ -396,17 +358,17 @@ int main(int argc, char **argv)
 
   // Find the four extreme points, i.e., min x, max x, min y, and max y
   thrust::pair<FloatIter, FloatIter> extremex = thrust::minmax_element(dx.begin(), dx.end());
-    
+
 
   // One method to find min / max (Correct)
   thrust::device_vector<float>::iterator minx = extremex.first;
   thrust::device_vector<float>::iterator maxx = extremex.second;
-    
+
 
   //typedef thrust::device_vector<float>::iterator floatIter;
   //floatIter minx = thrust::min_element(dx.begin(),dx.end());
   //floatIter maxx = thrust::max_element(dx.begin(),dx.end());
-    
+
   //thrust::pair<float *, float *> result = thrust::minmax_element(thrust::host, dx, dx+n);
   if(debug)
     {
@@ -441,7 +403,7 @@ int main(int argc, char **argv)
       cout << "d_extreme_x[1] = : " <<d_extreme_x[1]<<endl;
       cout << "d_extreme_y[1] = : " <<d_extreme_y[1]<<endl;
     }
-  
+
 
 
   // Get the pointers to the arrays, to be used as launch arguments
@@ -538,7 +500,7 @@ int main(int argc, char **argv)
 	  std::cout << "keys[" << i << "] = " << keys[i] << std::endl;
 	}
     }
-    
+
   //subtract 1 from keys
 
   thrust::transform(keys.begin(),
@@ -571,8 +533,8 @@ int main(int argc, char **argv)
 	{
 	  std::cout << "first_pts[" << i << "] = " << first_pts[i] << std::endl;
 	}
-    }  
-  thrust::inclusive_scan_by_key(keys.begin(), keys.end(), first_pts.begin(), first_pts.begin()); // in-place 
+    }
+  thrust::inclusive_scan_by_key(keys.begin(), keys.end(), first_pts.begin(), first_pts.begin()); // in-place
   if(debug)
     {
 
@@ -581,7 +543,7 @@ int main(int argc, char **argv)
 	  std::cout << "inclusive scanned first_pts[" << i << "] = " << first_pts[i] << std::endl;
 	}
     }
-  
+
   // Get the position of the first points in each sub-region
   FloatIteratorTuple pos_L = first_of_L.get_iterator_tuple();
   FloatIteratorTuple pos_R = first_of_R.get_iterator_tuple();
@@ -618,7 +580,7 @@ int main(int argc, char **argv)
       dx[first_of_R -first_of_L-1] = *maxx+0.0001;
 
       std::cout << "dx[first_or_R -first_of_L] = " << dx[first_of_R -first_of_L -1] << std::endl;
-      
+
       thrust::stable_sort_by_key(first_of_L_x, first_of_R_x, first_of_L);
       thrust::stable_sort_by_key(first_of_R_x, last_of_R_x, first_of_R);
       }*/
@@ -638,7 +600,7 @@ int main(int argc, char **argv)
   int headcount;
 
   clock_t start, end;
-  start = clock(); 
+  start = clock();
 
   //recursive step
   while(true){
@@ -702,7 +664,7 @@ int main(int argc, char **argv)
 			  thrust::make_zip_iterator(thrust::make_tuple(dist.begin(),d_idxs.begin())), d_keys_out.begin(),
 			  thrust::make_zip_iterator(thrust::make_tuple(d_vals_out.begin(), d_idxs_out.begin())),
 			  thrust::equal_to<int>(), my_max_func());
-  
+
     cudaDeviceSynchronize();
     //et = dtime_usec(et);
     //std::cout << "Thrust time: " << et/(float)USECPSEC << "s" << std::endl;
@@ -765,7 +727,7 @@ int main(int argc, char **argv)
 
     //stable_partition and then resize()
 
-  
+
     //update heads
     kernelUpdateHead <<< (headcount + 1023) / 1024, 1024 >>>(head_ptr, d_idxs_out_ptr, headcount);
     if(debug)
@@ -784,7 +746,7 @@ int main(int argc, char **argv)
 	  {
 	    std::cout << "keys[" << i << "] = " << keys[i] << std::endl;
 	  }
-      }    
+      }
     //subtract 1 from keys
 
     thrust::transform(keys.begin(),
@@ -809,8 +771,8 @@ int main(int argc, char **argv)
 	  {
 	    std::cout << "first_pts[" << i << "] = " << first_pts[i] << std::endl;
 	  }
-      }  
-    thrust::inclusive_scan_by_key(keys.begin(), keys.end(), first_pts.begin(), first_pts.begin()); // in-place 
+      }
+    thrust::inclusive_scan_by_key(keys.begin(), keys.end(), first_pts.begin(), first_pts.begin()); // in-place
     if(debug)
       {
 
@@ -818,7 +780,7 @@ int main(int argc, char **argv)
 	  {
 	    std::cout << "inclusive scanned first_pts[" << i << "] = " << first_pts[i] << std::endl;
 	  }
-  
+
 	for(int i = 0; i < n; i++)
 	  {
 	    std::cout << "before resize flag[" << i << "] = " << flag[i] << std::endl;
@@ -833,7 +795,7 @@ int main(int argc, char **argv)
 	  {
 	    std::cout << "before resize head[" << i << "] = " << head[i] << std::endl;
 	  }
-  
+
 
 	for(int i = 0; i < n; i++)
 	  {
@@ -892,7 +854,7 @@ int main(int argc, char **argv)
 	  {
 	    std::cout << "after resize head[" << i << "] = " << head[i] << std::endl;
 	  }
-  
+
 
 	for(int i = 0; i < n; i++)
 	  {
@@ -902,7 +864,7 @@ int main(int argc, char **argv)
 	  {
 	    std::cout << "after resize dx[" << i << "] = " << dx[i] << std::endl;
 	  }
-    
+
       }
     //update first points
     kernelIsFirst <<< (n + 1023) / 1024, 1024 >>>(head_ptr,first_pts_ptr, n);
@@ -914,8 +876,8 @@ int main(int argc, char **argv)
 	  {
 	    std::cout << "2nd update first_pts[" << i << "] = " << first_pts[i] << std::endl;
 	  }
-      }  
-    thrust::inclusive_scan_by_key(keys.begin(), keys.end(), first_pts.begin(), first_pts.begin()); // in-place 
+      }
+    thrust::inclusive_scan_by_key(keys.begin(), keys.end(), first_pts.begin(), first_pts.begin()); // in-place
     if(debug)
       {
 
@@ -923,19 +885,19 @@ int main(int argc, char **argv)
 	  {
 	    std::cout << "2nd update inclusive scanned first_pts[" << i << "] = " << first_pts[i] << std::endl;
 	  }
-  
-      }  
+
+      }
   }
-  
+
   end = clock();
-  // Calculating total time taken by the program. 
-  float time_taken = float(end - start) / float(CLOCKS_PER_SEC); 
-  cout << "Time taken by program is : " 
-       << time_taken << " sec " << endl; 
-  
-  ofstream myfile;
+  // Calculating total time taken by the program.
+  float time_taken = float(end - start) / float(CLOCKS_PER_SEC);
+  cout << "Time taken by program is : "
+       << time_taken << " sec " << endl;
+
   printf("Number of elements in hull: %d\n", n);
-  myfile.open("qhull.txt", ofstream::trunc);
+  ofstream myfile;
+  myfile.open("polygon.txt", ofstream::trunc);
 
   int i = 0;
   while(true)
@@ -947,7 +909,7 @@ int main(int argc, char **argv)
       myfile << " ";
     }
   myfile.close();
-  
+
   return 0;
 }
 
