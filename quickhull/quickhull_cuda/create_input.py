@@ -5,7 +5,7 @@ parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('--output', type=str, default='nums', help='file to be generated(.txt)')
 parser.add_argument('--size', dest='size', default = 1000, type=int,
                     help='Size of list generated')
-parser.add_argument('--grid', dest='grid', type=int, default=50,
+parser.add_argument('--grid', dest='grid', type=int, default=50000,
                     help='desired grid size')
 parser.add_argument('--tridimensional', action='store_true', default=False)
 

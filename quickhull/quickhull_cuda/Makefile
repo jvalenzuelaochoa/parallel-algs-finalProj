@@ -2,8 +2,9 @@ FILE?=sort_pointsed
 POINTS?=points
 HULL?=polygon
 SORTEDHULL?=sortedpolygon
-SIZE?=10
+SIZE?=20
 CPP_SOURCES = Coordinate.cpp
+QHULL?=qhull
 
 all: test
 
@@ -15,11 +16,14 @@ test: presort seq plot
 plot:
 	python plot.py --quiet --pointsfile $(POINTS).txt --polygonfile $(HULL).txt
 
+plotsorted:
+	python plot.py --quiet --pointsfile $(POINTS).txt --polygonfile $(SORTEDHULL).txt
+
 presort:
 	python sort_points.py --quiet --pointsfile $(POINTS).txt --output $(FILE)
 
 aftersort:
-	python sort_points.py --quiet --pointsfile $(HULL).txt --output $(SORTEDHULL)
+	python sort_points.py --quiet --pointsfile $(QHULL).txt --output $(SORTEDHULL)
 
 seq:
 	./graham
@@ -31,7 +35,10 @@ testquickhull: build input presort quickhull aftersort
 	cp sortedpolygon.txt polygon.txt
 	make plot
 
-quickhullnew: input testquickhull
+quickhullnew: input presort
+	./a.out "sort_pointsed.txt"
+	make aftersort
+	make plotsorted
 
 mergehull:
 	./mergehull "sort_pointsed_x.txt" debug

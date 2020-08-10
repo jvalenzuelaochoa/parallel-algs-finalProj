@@ -39,7 +39,7 @@ plt.plot(xs,ys)
 # Add all points to plot
 coord = parse_coordinates(args.pointsfile)
 for (x,y) in coord:
-    circle = circle = plt.Circle((x, y), radius=1, fc='y')
+    circle = circle = plt.Circle((x, y), radius=500, fc='y')
     plt.gca().add_patch(circle)
 
 # Display plot
