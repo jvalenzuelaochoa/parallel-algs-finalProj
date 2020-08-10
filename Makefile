@@ -3,7 +3,8 @@ POINTS?=points
 HULL?=polygon
 SORTEDHULL?=sortedpolygon
 QHULL?=qhull
-SIZE?=10
+SIZE?=100000
+
 
 input:
 	python create_input.py --output $(POINTS) --size $(SIZE)
@@ -39,7 +40,6 @@ testquickhull:
 quickhullnew: 
 	make input
 	make presort
-	nvcc quickhull.cu
 	./a.out
 	make aftersort
 	make plotsorted

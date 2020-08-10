@@ -25,7 +25,7 @@
 
 using namespace std;
 #define BLOCK_SIZE 1024
-#define CudaChainPoint  float2
+
 
 
 // Make predicate easy to write
@@ -52,7 +52,7 @@ struct is_interior_6_tuple {
 //reference: https://stackoverflow.com/questions/38923671/thrust-cuda-find-maximum-per-each-groupsegment
 struct my_max_func
 {
-
+  
   template <typename T1, typename T2>
   __host__ __device__
   T1 operator()(const T1 t1, const T2 t2){
@@ -67,6 +67,14 @@ struct my_max_func
   }
 };
 
+
+
+__host__ __device__
+bool cmpf(float A, float B, float epsilon = 0.0001f)
+{
+  return (fabs(A - B) < epsilon);
+}
+
 /////////////////////////////////////////////////////////
 // reference: https://github.com/sina-masnadi/CudaChain/blob/master/src/CudaChain.cu
 // isLeft():tests if a point is Left|On|Right of an infinite line.
@@ -77,24 +85,25 @@ struct my_max_func
 // <0 for P2 right of the line
 // See: Algorithm 1 on Area of Triangles
 __host__ __device__
-
-int isLeft(CudaChainPoint *P0, CudaChainPoint *P1, float &P2_x, float &P2_y) {
+int isLeft(float& p0x, float& p0y, float& p1x, float& p1y, float& p2x, float& p2y) {
   ///      float val = (p.y - p1.y) * (p2.x - p1.x) - 
   //      (p2.y - p1.y) * (p.x - p1.x); 
+  bool e1, e2;
 
-  float val =  (P1->x - P0->x) * (P2_y - P0->y) - (P2_x - P0->x) * (P1->y - P0->y);
-  if (val >0) return 1;
+  e1 = cmpf(p2x, p1x) && cmpf(p2y,p1y);
+  e2 = cmpf(p2x, p0x) && cmpf(p2y,p0y);
 
+
+  if(e1 || e2 )
+    return 1;
+  else
+    {  
+      float val =  (p1x - p0x) * (p2y - p0y) - (p2x - p0x) * (p1y - p0y);
+      if (val >=0) return 1;
+    }
   return 0;
 
 }
-
-__host__ __device__
-bool cmpf(float A, float B, float epsilon = 0.0001f)
-{
-  return (fabs(A - B) < epsilon);
-}
-
 //reference https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
 __host__ __device__
 
@@ -117,7 +126,7 @@ int PointInTriangle (float& ptx, float& pty, float& v1x,float& v1y, float& v2x,f
   e3 = cmpf(ptx, v3x) && cmpf(pty,v3y);
 
   if(e1 || e2 || e3)
-  return 0;
+    return 0;
 
   d1 = sign(ptx, pty, v1x, v1y, v2x, v2y);
   d2 = sign(ptx,pty, v2x,v2y, v3x,v3y);
@@ -177,6 +186,7 @@ void kernelCalcDist(int *first_pts, int *last_pts, int *keys, float *v_x, float 
 __global__
 void kernelIsLeft(float *h_extreme_x, float *h_extreme_y,
 		  float *v_x, float *v_y, int *flag, int n) {
+  
   __shared__ float2 s_extreme[2]; // Stored in shared memory
 
   if (threadIdx.x == 0) {
@@ -186,11 +196,12 @@ void kernelIsLeft(float *h_extreme_x, float *h_extreme_y,
     }
   }
   __syncthreads();
-
+  
+  
   int i = threadIdx.x + blockDim.x * blockIdx.x;
   if (i < n) // Check
     {
-      flag[i] = isLeft(&s_extreme[0], &s_extreme[1], v_x[i], v_y[i]);
+      flag[i] = isLeft(s_extreme[0].x, s_extreme[0].y,s_extreme[1].x, s_extreme[1].y, v_x[i], v_y[i]);
     }
 }
 
@@ -282,7 +293,8 @@ public:
 
 int main(int argc, char **argv)
 {
-  bool debug = true;
+  bool debug = false;
+  //bool debug = true;
   int deviceCount;
   cudaGetDeviceCount(&deviceCount);
   if (deviceCount == 0) {
@@ -376,8 +388,10 @@ int main(int argc, char **argv)
 	max_x = i; 
     }
 
-
-  cout << "The min_x is: " <<min_x<<", the max_x is "<<max_x << endl;
+  if(debug)
+    {
+      cout << "The min_x is: " <<min_x<<", the max_x is "<<max_x << endl;
+    }
   typedef thrust::device_vector<float>::iterator FloatIter;
 
   // Find the four extreme points, i.e., min x, max x, min y, and max y
@@ -394,11 +408,21 @@ int main(int argc, char **argv)
   //floatIter maxx = thrust::max_element(dx.begin(),dx.end());
     
   //thrust::pair<float *, float *> result = thrust::minmax_element(thrust::host, dx, dx+n);
-  cout << "minx = : " <<*minx<<endl;
-  cout << "maxx = : " <<*maxx<<endl;
-  cout << "minx index = : " <<minx - dx.begin()<<endl;
-  cout << "maxx index = : " <<maxx - dx.begin()<<endl;
+  if(debug)
+    {
 
+      cout << "minx = : " <<*minx<<endl;
+      cout << "maxx = : " <<*maxx<<endl;
+      cout << "minx index = : " <<minx - dx.begin()<<endl;
+      cout << "maxx index = : " <<maxx - dx.begin()<<endl;
+    }
+  //cout << "maxy = : " <<dy[maxx - dx.begin()]<<endl;
+  float maxy = dy[maxx - dx.begin()];
+  if(debug)
+    {
+
+      cout << "maxy = : " <<maxy<<endl;
+    }
   // Store the four extreme points temporarily
   thrust::device_vector<float> d_extreme_x(2);
   thrust::device_vector<float> d_extreme_y(2);
@@ -408,6 +432,16 @@ int main(int argc, char **argv)
 
   d_extreme_y[0] = dy[minx - dx.begin()];
   d_extreme_y[1] = dy[maxx - dx.begin()];
+
+  if(debug)
+    {
+
+      cout << "d_extreme_x[0] = : " <<d_extreme_x[0]<<endl;
+      cout << "d_extreme_y[0] = : " <<d_extreme_y[0]<<endl;
+      cout << "d_extreme_x[1] = : " <<d_extreme_x[1]<<endl;
+      cout << "d_extreme_y[1] = : " <<d_extreme_y[1]<<endl;
+    }
+  
 
 
   // Get the pointers to the arrays, to be used as launch arguments
@@ -424,10 +458,12 @@ int main(int argc, char **argv)
   // 1st discarding :  Block size can be 1024 in this kernel
   kernelIsLeft <<< (n + 1023) / 1024, 1024 >>>(d_extreme_x_ptr, d_extreme_y_ptr,
 					       d_x_ptr, d_y_ptr, flag_ptr, n);
+  if(debug)
+    {
 
-  for(int i = 0; i < n; i++)
-    std::cout << "flag[" << i << "] = " << flag[i] << std::endl;
-
+      for(int i = 0; i < n; i++)
+	std::cout << "flag[" << i << "] = " << flag[i] << std::endl;
+    }
   // Defining a zip_iterator type can be a little cumbersome ...
   // same size vector are dx, dy, flag, head, keys, first_pts
   typedef thrust::device_vector<float>::iterator FloatIterator;
@@ -448,32 +484,59 @@ int main(int argc, char **argv)
 
   // pass the zip_iterators into Partion()
   // Partion
-  Float3Iterator first_of_R = thrust::partition(P_first, P_last,
-						is_interior_tuple());                   // Find Interior
+  Float3Iterator first_of_R = thrust::stable_partition(P_first, P_last,
+						       is_interior_tuple());                   // Find Interior
   Float3Iterator first_of_L = P_first;
-  std::cout<<" first_of_R - first_of_L = " << first_of_R -first_of_L << std::endl;
+  if(debug)
+    {
+
+      std::cout<<" first_of_R - first_of_L = " << first_of_R -first_of_L << std::endl;
+    }
   //head init
   head[0] = 1;
-  if(first_of_R - first_of_L < head.size() && first_of_R - first_of_L >0)
-    head[first_of_R - first_of_L -1] = 1;
-  if(first_of_R - first_of_L ==0)
+  //if all points in flag are 1 or   //if all points in flag are 0
+  if((first_of_R - first_of_L) == head.size() || (first_of_R - first_of_L) ==0)
     head[head.size()-1] = 1;
-
+  else
+    //if some are zeros some are 1
+    {
+      	head[first_of_R - first_of_L-1] = 1;
+	/*
+	  if(dx[first_of_R - first_of_L] > dx[first_of_R - first_of_L - 1] )
+	  head[first_of_R - first_of_L] = 1;
+	  else
+	  head[first_of_R - first_of_L - 1] = 1;
+	*/
+    }
   thrust::inclusive_scan(head.begin(), head.end(), keys.begin()); // in-place scan
 
+  if(debug)
+    {
 
-  for(int i = 0; i < n; i++)
-    {
-      std::cout << "partitioned flag[" << i << "] = " << flag[i] << std::endl;
+      for(int i = 0; i < n; i++)
+	{
+	  std::cout << "partitioned flag[" << i << "] = " << flag[i] << std::endl;
 
+	}
     }
-  for(int i = 0; i < n; i++)
+  thrust::fill(flag.begin(), flag.end(), 0);
+  if(debug)
     {
-      std::cout << "head[" << i << "] = " << head[i] << std::endl;
-    }
-  for(int i = 0; i < n; i++)
-    {
-      std::cout << "keys[" << i << "] = " << keys[i] << std::endl;
+
+      for(int i = 0; i < n; i++)
+	{
+	  std::cout << "Zeroed flag[" << i << "] = " << flag[i] << std::endl;
+
+	}
+
+      for(int i = 0; i < n; i++)
+	{
+	  std::cout << "head[" << i << "] = " << head[i] << std::endl;
+	}
+      for(int i = 0; i < n; i++)
+	{
+	  std::cout << "keys[" << i << "] = " << keys[i] << std::endl;
+	}
     }
     
   //subtract 1 from keys
@@ -483,28 +546,40 @@ int main(int argc, char **argv)
 		    thrust::make_constant_iterator(1),
 		    keys.begin(),
 		    thrust::minus<int>());
-  for(int i = 0; i < n; i++)
+  if(debug)
     {
-      std::cout << "subtracted keys[" << i << "] = " << keys[i] << std::endl;
+
+      for(int i = 0; i < n; i++)
+	{
+	  std::cout << "subtracted keys[" << i << "] = " << keys[i] << std::endl;
+	}
     }
-  thrust::device_vector<int> gindex(n);
-  thrust::sequence(gindex.begin(), gindex.end());
-  for(int i = 0; i < n; i++)
+  /*
+    thrust::device_vector<int> gindex(n);
+    thrust::sequence(gindex.begin(), gindex.end());
+    for(int i = 0; i < n; i++)
     {
-      std::cout << "global index[" << i << "] = " << gindex[i] << std::endl;
+    std::cout << "global index[" << i << "] = " << gindex[i] << std::endl;
     }
+  */
   //first_pts
   kernelIsFirst <<< (n + 1023) / 1024, 1024 >>>(head_ptr,first_pts_ptr, n);
-  for(int i = 0; i < n; i++)
+  if(debug)
     {
-      std::cout << "first_pts[" << i << "] = " << first_pts[i] << std::endl;
-    }
-  
-  thrust::inclusive_scan_by_key(keys.begin(), keys.end(), first_pts.begin(), first_pts.begin()); // in-place 
 
-  for(int i = 0; i < n; i++)
+      for(int i = 0; i < n; i++)
+	{
+	  std::cout << "first_pts[" << i << "] = " << first_pts[i] << std::endl;
+	}
+    }  
+  thrust::inclusive_scan_by_key(keys.begin(), keys.end(), first_pts.begin(), first_pts.begin()); // in-place 
+  if(debug)
     {
-      std::cout << "inclusive scanned first_pts[" << i << "] = " << first_pts[i] << std::endl;
+
+      for(int i = 0; i < n; i++)
+	{
+	  std::cout << "inclusive scanned first_pts[" << i << "] = " << first_pts[i] << std::endl;
+	}
     }
   
   // Get the position of the first points in each sub-region
@@ -517,19 +592,53 @@ int main(int argc, char **argv)
   FloatIterator first_of_L_x = thrust::get<0>(pos_L);
   FloatIterator first_of_R_x = thrust::get<0>(pos_R);
   FloatIterator last_of_R_x = thrust::get<0>(pos_last);
-  thrust::sort_by_key(first_of_L_x, first_of_R_x, first_of_L);
-  thrust::sort_by_key(first_of_R_x, last_of_R_x, first_of_R);
+  thrust::stable_sort_by_key(first_of_L_x, first_of_R_x, first_of_L);
+  thrust::stable_sort_by_key(first_of_R_x, last_of_R_x, first_of_R);
+
+
+  if(debug)
+    {
+      std::cout << "dx[first_or_R -first_of_L] = " << dx[first_of_R -first_of_L -1] << std::endl;
+    }
+  float tempMaxy = dy[first_of_R -first_of_L - 1] ;
+  if(debug)
+    {
+
+      std::cout << "after tempMaxy" << std::endl;
+    }
+  /*
+  if(tempMaxy != maxy)
+    {
+        if(debug)
+    {
+
+      std::cout << "if tempMaxy != maxy" << std::endl;
+    }
+
+      dx[first_of_R -first_of_L-1] = *maxx+0.0001;
+
+      std::cout << "dx[first_or_R -first_of_L] = " << dx[first_of_R -first_of_L -1] << std::endl;
+      
+      thrust::stable_sort_by_key(first_of_L_x, first_of_R_x, first_of_L);
+      thrust::stable_sort_by_key(first_of_R_x, last_of_R_x, first_of_R);
+      }*/
   // Sort in ascending order, and then reverse
   if(first_of_R - first_of_L !=0){
     thrust::reverse(thrust::get<0>(pos_R), thrust::get<0>(pos_last));
     thrust::reverse(thrust::get<1>(pos_R), thrust::get<1>(pos_last));
     thrust::reverse(thrust::get<2>(pos_R), thrust::get<2>(pos_last));
   }
-  for(int i = 0; i < n; i++)
-    std::cout << "sorted dx[" << i << "] = " << dx[i] << std::endl;
 
+  if(debug)
+    {
+      for(int i = 0; i < n; i++)
+	std::cout << "sorted dx[" << i << "] = " << dx[i] << std::endl;
+      //std::cout << "dy[24] = " << dy[24] << std::endl;
+    }
   int headcount;
 
+  clock_t start, end;
+  start = clock(); 
 
   //recursive step
   while(true){
@@ -616,14 +725,42 @@ int main(int argc, char **argv)
 
     //line 8
     // detect interior points
+    if(debug)
+      {
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "before detected interior flag[" << i << "] = " << flag[i] << std::endl;
 
+	  }
+      }
+    /*
+      int tempi = PointInTriangle (dx[5], dy[5],dx[first_pts[5]],dy[first_pts[5]],
+      dx[d_idxs_out[keys[5]]],dy[d_idxs_out[keys[5]]],
+      dx[last_pts[keys[5]]],dy[last_pts[keys[5]]]);
+      std::cout<< "temp i = " << tempi<<std::endl;
+
+      std::cout<<dx[5]<< dy[5]<<dx[first_pts[5]]<<dy[first_pts[5]]<<
+      dx[d_idxs_out[keys[5]]]<<dy[d_idxs_out[keys[5]]]<<
+      dx[last_pts[keys[5]]]<<dy[last_pts[keys[5]]])<< std::endl;
+
+    */
+
+    if(debug){
+      std::cout<<"PointIntriangle "<<dx[5]<<" " << dy[5]<<" " <<dx[first_pts[5]]<<" " <<dy[first_pts[5]]
+	       <<" " <<dx[d_idxs_out[keys[5]]]<<" " <<dy[d_idxs_out[keys[5]]]
+	       <<" " <<dx[last_pts[keys[5]]]<<" " <<dy[last_pts[keys[5]]]<< std::endl;
+    }
     kernelLabelInterior <<< (n + 1023) / 1024, 1024 >>>(first_pts_ptr, last_pts_ptr,
 							d_idxs_out_ptr, keys_ptr, flag_ptr,
 							d_x_ptr, d_y_ptr, n);
-    for(int i = 0; i < n; i++)
-      {
-	std::cout << "detected interior flag[" << i << "] = " << flag[i] << std::endl;
 
+    if(debug)
+      {
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "detected interior flag[" << i << "] = " << flag[i] << std::endl;
+
+	  }
       }
 
     //stable_partition and then resize()
@@ -631,19 +768,23 @@ int main(int argc, char **argv)
   
     //update heads
     kernelUpdateHead <<< (headcount + 1023) / 1024, 1024 >>>(head_ptr, d_idxs_out_ptr, headcount);
-    for(int i = 0; i < n; i++)
+    if(debug)
       {
-	std::cout << "head[" << i << "] = " << head[i] << std::endl;
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "head[" << i << "] = " << head[i] << std::endl;
+	  }
       }
-  
     //update keys and first_pts
     thrust::inclusive_scan(head.begin(), head.end(), keys.begin()); // in-place scan
-
-    for(int i = 0; i < n; i++)
+    if(debug)
       {
-	std::cout << "keys[" << i << "] = " << keys[i] << std::endl;
-      }
-    
+
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "keys[" << i << "] = " << keys[i] << std::endl;
+	  }
+      }    
     //subtract 1 from keys
 
     thrust::transform(keys.begin(),
@@ -651,46 +792,54 @@ int main(int argc, char **argv)
 		      thrust::make_constant_iterator(1),
 		      keys.begin(),
 		      thrust::minus<int>());
-    for(int i = 0; i < n; i++)
+    if(debug)
       {
-	std::cout << "subtracted keys[" << i << "] = " << keys[i] << std::endl;
-      }
 
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "subtracted keys[" << i << "] = " << keys[i] << std::endl;
+	  }
+      }
     //first_pts
     kernelIsFirst <<< (n + 1023) / 1024, 1024 >>>(head_ptr,first_pts_ptr, n);
-    for(int i = 0; i < n; i++)
+    if(debug)
       {
-	std::cout << "first_pts[" << i << "] = " << first_pts[i] << std::endl;
-      }
-  
+
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "first_pts[" << i << "] = " << first_pts[i] << std::endl;
+	  }
+      }  
     thrust::inclusive_scan_by_key(keys.begin(), keys.end(), first_pts.begin(), first_pts.begin()); // in-place 
-
-    for(int i = 0; i < n; i++)
+    if(debug)
       {
-	std::cout << "inclusive scanned first_pts[" << i << "] = " << first_pts[i] << std::endl;
-      }
+
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "inclusive scanned first_pts[" << i << "] = " << first_pts[i] << std::endl;
+	  }
   
-    for(int i = 0; i < n; i++)
-      {
-	std::cout << "before resize flag[" << i << "] = " << flag[i] << std::endl;
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "before resize flag[" << i << "] = " << flag[i] << std::endl;
 
-      }
-    for(int i = 0; i < n; i++)
-      {
-	std::cout << "before resize first_pts[" << i << "] = " << first_pts[i] << std::endl;
-      }
+	  }
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "before resize first_pts[" << i << "] = " << first_pts[i] << std::endl;
+	  }
 
-    for(int i = 0; i < n; i++)
-      {
-	std::cout << "before resize head[" << i << "] = " << head[i] << std::endl;
-      }
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "before resize head[" << i << "] = " << head[i] << std::endl;
+	  }
   
 
-    for(int i = 0; i < n; i++)
-      {
-	std::cout << "before resize keys[" << i << "] = " << keys[i] << std::endl;
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "before resize keys[" << i << "] = " << keys[i] << std::endl;
+	  }
       }
-
     // create some zip_iterators
     Float6Iterator stable_par_first = thrust::make_zip_iterator(thrust::make_tuple(dx.begin(), dy.begin(),
 										   flag.begin(), head.begin(),
@@ -704,12 +853,18 @@ int main(int argc, char **argv)
     Float6Iterator stable_par_R = thrust::stable_partition(stable_par_first, stable_par_last,
 							   is_interior_6_tuple());                   // Find Interior
     Float6Iterator stable_par_L = stable_par_first;
-    std::cout << "n = " << n << std::endl;
+    if(debug)
+      {
+	std::cout << "n = " << n << std::endl;
+      }
     if(n == stable_par_R - stable_par_L)
       break;
     n = stable_par_R - stable_par_L;
+    if(debug)
+      {
 
-    std::cout << " exteriorpointcount = stable_par_R - stable_par_L = " << n << std::endl;
+	std::cout << " exteriorpointcount = stable_par_R - stable_par_L = " << n << std::endl;
+      }
     //resize()
     /*
       dx.resize(exteriorpointcount);
@@ -720,64 +875,78 @@ int main(int argc, char **argv)
       first_pts.resize(exteriorpointcount);
       dist.resize(exteriorpointcount);
     */
-    for(int i = 0; i < n; i++)
+    if(debug)
       {
-	std::cout << "after resize flag[" << i << "] = " << flag[i] << std::endl;
 
-      }
-    for(int i = 0; i < n; i++)
-      {
-	std::cout << "after resize first_pts[" << i << "] = " << first_pts[i] << std::endl;
-      }
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "after resize flag[" << i << "] = " << flag[i] << std::endl;
 
-    for(int i = 0; i < n; i++)
-      {
-	std::cout << "after resize head[" << i << "] = " << head[i] << std::endl;
-      }
+	  }
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "after resize first_pts[" << i << "] = " << first_pts[i] << std::endl;
+	  }
+
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "after resize head[" << i << "] = " << head[i] << std::endl;
+	  }
   
 
-    for(int i = 0; i < n; i++)
-      {
-	std::cout << "after resize keys[" << i << "] = " << keys[i] << std::endl;
-      }
-    for(int i = 0; i < n; i++)
-      {
-	std::cout << "after resize dx[" << i << "] = " << dx[i] << std::endl;
-      }
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "after resize keys[" << i << "] = " << keys[i] << std::endl;
+	  }
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "after resize dx[" << i << "] = " << dx[i] << std::endl;
+	  }
     
-
+      }
     //update first points
     kernelIsFirst <<< (n + 1023) / 1024, 1024 >>>(head_ptr,first_pts_ptr, n);
-    for(int i = 0; i < n; i++)
-      {
-	std::cout << "2nd update first_pts[" << i << "] = " << first_pts[i] << std::endl;
-      }
-  
-    thrust::inclusive_scan_by_key(keys.begin(), keys.end(), first_pts.begin(), first_pts.begin()); // in-place 
 
-    for(int i = 0; i < n; i++)
+    if(debug)
       {
-	std::cout << "2nd update inclusive scanned first_pts[" << i << "] = " << first_pts[i] << std::endl;
-      }
+
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "2nd update first_pts[" << i << "] = " << first_pts[i] << std::endl;
+	  }
+      }  
+    thrust::inclusive_scan_by_key(keys.begin(), keys.end(), first_pts.begin(), first_pts.begin()); // in-place 
+    if(debug)
+      {
+
+	for(int i = 0; i < n; i++)
+	  {
+	    std::cout << "2nd update inclusive scanned first_pts[" << i << "] = " << first_pts[i] << std::endl;
+	  }
   
-  
+      }  
   }
   
+  end = clock();
+  // Calculating total time taken by the program. 
+  float time_taken = float(end - start) / float(CLOCKS_PER_SEC); 
+  cout << "Time taken by program is : " 
+       << time_taken << " sec " << endl; 
   
-    ofstream myfile;
-    printf("Number of elements in hull: %d\n", n);
-    myfile.open("qhull.txt", ofstream::trunc);
+  ofstream myfile;
+  printf("Number of elements in hull: %d\n", n);
+  myfile.open("qhull.txt", ofstream::trunc);
 
-    int i = 0;
-    while(true)
+  int i = 0;
+  while(true)
     {
-    myfile << '(' << dx[i] << ','  << dy[i] << ')';
+      myfile << '(' << dx[i] << ','  << dy[i] << ')';
 
-    if (++i >= n) break;
+      if (++i >= n) break;
 
-    myfile << " ";
+      myfile << " ";
     }
-    myfile.close();
+  myfile.close();
   
   return 0;
 }
