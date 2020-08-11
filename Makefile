@@ -11,14 +11,12 @@ all: test
 
 input:
 	python tools/create_input.py --output $(POINTS) --size $(SIZE) --grid 500000
+	python tools/sort_points.py --quiet --pointsfile $(POINTS).txt --output $(FILE)
 
 test: presort seq plot
 
 plot:
 	python tools/plot.py --quiet --pointsfile $(POINTS).txt --polygonfile $(HULL).txt
-
-presort:
-	python tools/sort_points.py --quiet --pointsfile $(POINTS).txt --output $(FILE)
 
 aftersort:
 	python tools/sort_points.py --quiet --pointsfile $(HULL).txt --output $(SORTEDHULL)
@@ -30,21 +28,21 @@ seq:
 quickhull:
 	./quickhull "pre_sorted.txt"
 
-quickhull_cu:
+monotone:
 	./quickhull_cu
 
-testquickhull: build_omp presort quickhull aftersort plot
+testquickhull: build_omp quickhull aftersort plot
 
-quickhullnew: build_cu input presort quickhull_cu aftersort plot
+monotonenew: build_cu input monotone aftersort plot
 
 qrun: input presort quickhull_cu aftersort plot
 
 mergehull:
 	./mergehull "pre_sorted_x.txt"
 
-testmergehull: build_omp presort mergehull plot
+testmergehull: build_omp mergehull plot
 
-mergehullnew: input build_omp presort mergehull
+mergehullnew: input build_omp mergehull
 
 build: clean build_cu build_omp
 
@@ -56,7 +54,7 @@ build_omp:
 	g++ -m64 omp/quickhull_omp.cpp $(CPP_SOURCES) -fopenmp -o quickhull
 	g++ -m64 omp/mergehull_omp.cpp $(CPP_SOURCES) -fopenmp -o mergehull
 
-run: build input presort seq plot
+run: build input seq plot
 
 clean:
 	rm -rf *.exe *.exp *.lib polygon.txt
