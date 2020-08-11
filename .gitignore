@@ -10,3 +10,4 @@ archive/
 *myGPU*
 z_archive/
 thrust_test/
+quickhull_cu

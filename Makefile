@@ -37,6 +37,8 @@ testquickhull: build_omp presort quickhull aftersort plot
 
 quickhullnew: build_cu input presort quickhull_cu aftersort plot
 
+qrun: input presort quickhull_cu aftersort plot
+
 mergehull:
 	./mergehull "pre_sorted_x.txt"
 

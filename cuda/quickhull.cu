@@ -114,6 +114,10 @@ float sign (float& p1x, float& p1y, float& p2x,float& p2y, float& p3x,float& p3y
   return (p1x - p3x) * (p2y - p3y) - (p2x - p3x) * (p1y - p3y);
 }
 
+//pt is the point under test
+//v1 is the first point
+//v2 is the fartheset point
+//v3 is the last point
 __host__ __device__
 
 int PointInTriangle (float& ptx, float& pty, float& v1x,float& v1y, float& v2x,float& v2y, float& v3x, float& v3y)
@@ -140,7 +144,26 @@ int PointInTriangle (float& ptx, float& pty, float& v1x,float& v1y, float& v2x,f
   if(!(has_neg && has_pos))
     return 1;
   else
-    return 0;
+    {
+      if(v1x < v3x) //upside triangle
+	{
+	  //isLeft(float& p0x, float& p0y, float& p1x, float& p1y, float& p2x, float& p2y) p2 is the target point
+	  if(isLeft( v1x, v1y,  v2x,v2y, ptx, pty)==1 ||isLeft( v2x, v2y,  v3x,v3y, ptx, pty)==1 )
+	    return 0;
+	  else
+	    return 1;
+	}
+      else // upside down
+	{
+	  //isLeft(float& p0x, float& p0y, float& p1x, float& p1y, float& p2x, float& p2y) p2 is the target point
+	  if(isLeft( v1x, v1y,  v2x,v2y, ptx, pty)==0 ||isLeft( v2x, v2y,  v3x,v3y, ptx, pty)==0 )
+	    return 0;
+	  else
+	    return 1;
+	  
+	}
+      return 0;
+    }
   //    return !(has_neg && has_pos);
 }
 
@@ -659,7 +682,8 @@ int main(int argc, char **argv)
     cudaDeviceSynchronize();
     //unsigned long long et = dtime_usec(0);
 
-    thrust::sort_by_key(keys.begin(), keys.begin()+n, thrust::make_zip_iterator(thrust::make_tuple(dist.begin(), d_idxs.begin())));
+    //reference: https://stackoverflow.com/questions/38923671/thrust-cuda-find-maximum-per-each-groupsegment    
+    //thrust::sort_by_key(keys.begin(), keys.begin()+n, thrust::make_zip_iterator(thrust::make_tuple(dist.begin(), d_idxs.begin())));
     thrust::reduce_by_key(keys.begin(), keys.begin()+n,
 			  thrust::make_zip_iterator(thrust::make_tuple(dist.begin(),d_idxs.begin())), d_keys_out.begin(),
 			  thrust::make_zip_iterator(thrust::make_tuple(d_vals_out.begin(), d_idxs_out.begin())),
