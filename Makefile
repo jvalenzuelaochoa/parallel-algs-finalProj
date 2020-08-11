@@ -42,6 +42,8 @@ mergehull:
 
 testmergehull: build_omp presort mergehull plot
 
+mergehullnew: input build_omp presort mergehull
+
 build: clean build_cu build_omp
 
 build_cu:
@@ -49,8 +51,8 @@ build_cu:
 	nvcc cuda/quickhull.cu $(CPP_SOURCES) -o quickhull_cu
 
 build_omp:
-	g++ omp/quickhull_omp.cpp $(CPP_SOURCES) -fopenmp -o quickhull
-	g++ omp/mergehull_omp.cpp $(CPP_SOURCES) -fopenmp -o mergehull
+	g++ -m64 omp/quickhull_omp.cpp $(CPP_SOURCES) -fopenmp -o quickhull
+	g++ -m64 omp/mergehull_omp.cpp $(CPP_SOURCES) -fopenmp -o mergehull
 
 run: build input presort seq plot
 
