@@ -12,6 +12,8 @@ using namespace std;
 
 bool debug = false;
 
+// Implementation of this method is based on the one shown in:
+// https://www.geeksforgeeks.org/convex-hull-using-divide-and-conquer-algorithm/
 vector<Coordinate> joinHulls(vector<Coordinate> Hl, vector<Coordinate> Hr)
 {
 
@@ -56,7 +58,6 @@ vector<Coordinate> joinHulls(vector<Coordinate> Hl, vector<Coordinate> Hr)
   int uppera = inda, upperb = indb;
   inda = ia, indb = ib;
   done = 0;
-  int g = 0;
   while (!done) //finding the lower tangent
   {
     done = 1;
