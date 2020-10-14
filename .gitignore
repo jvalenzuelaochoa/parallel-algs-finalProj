@@ -1,7 +1,6 @@
 *.exe
 *.exp
 *.lib
-*.pdf
 *.out
 *.txt
 graham
